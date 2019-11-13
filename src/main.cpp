@@ -17,24 +17,119 @@ String output4State = "off";
 const int output5 = D1;
 const int output4 = D3;
 
-int hallPin = D5;
-int hallPin2 = D6;
-
+int first_magnet_sensor = D5; //On the magnet
+int second_magnet_sensor = D6; //Off the magnet
 bool hallState = false;
-
-
-
-
-
 
 int PWMA=D1; 
 int dirA=D3;
+
+volatile int magnetCount_a = 0;
+volatile int magnetCount_b = 0;
+volatile int oldTime_a = 1;
+volatile int oldTime_b = 1;
+int timeLimit = 100;
+int newTime_a = 0;
+int newTime_b = 0;
+int forward_magnet_input = 8;
+int backward_magnet_input = 0;
+void onMagnetHandler_a();
+void onMagnetHandler_b();
+void forward();
+void backward();
+void wifi_manager();
+
 void setup() {
- /* Serial.begin(9600);
+  Serial.begin(115200);
+  Serial.begin(9600);
   pinMode(PWMA, OUTPUT); 
   pinMode(dirA, OUTPUT); 
+  pinMode(first_magnet_sensor,INPUT_PULLUP);
+  pinMode(second_magnet_sensor,INPUT_PULLUP);
+
+
+
+  
+
+/*
+  // WiFiManager
+  // Local intialization. Once its business is done, there is no need to keep it around
+  WiFiManager wifiManager;
+
+  // Uncomment and run it once, if you want to erase all the stored information
+  //wifiManager.resetSettings();
+
+  // set custom ip for portal
+  //wifiManager.setAPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
+
+  // fetches ssid and pass from eeprom and tries to connect
+  // if it does not connect it starts an access point with the specified name
+  // here  "AutoConnectAP"
+  // and goes into a blocking loop awaiting configuration
+  wifiManager.autoConnect("Lego-MMR");
+
+  // or use this for auto generated name ESP + ChipID
+  //wifiManager.autoConnect();
+
+  // if you get here you have connected to the WiFi
+  Serial.println("Connected.");
+
+  server.begin();
   */
-  WiFiClient client = server.available(); // Listen for incoming clients
+  attachInterrupt(digitalPinToInterrupt(first_magnet_sensor),onMagnetHandler_a,FALLING);
+  attachInterrupt(digitalPinToInterrupt(second_magnet_sensor),onMagnetHandler_b,FALLING);
+}
+
+
+void ICACHE_RAM_ATTR onMagnetHandler_a()
+{
+   newTime_a = millis();
+   if (newTime_a - oldTime_a >= timeLimit)
+   {
+       magnetCount_a++;
+       oldTime_a = newTime_a;
+   }
+}
+void ICACHE_RAM_ATTR onMagnetHandler_b()
+{
+   newTime_b = millis();
+   if (newTime_b - oldTime_b >= timeLimit)
+   {
+       magnetCount_b++;
+       oldTime_b = newTime_b;
+   }
+}
+void stopTrain()
+{
+   // reset variables.
+   magnetCount_a = 0;
+   magnetCount_b = 0;
+   oldTime_a = 0;
+   oldTime_b = 0;
+}
+
+void loop() {
+  if(magnetCount_a <= 3 && magnetCount_b <= 3){
+  analogWrite(PWMA,750);
+  digitalWrite(dirA, LOW);
+  //forward();
+  }
+  if(magnetCount_a >3 && magnetCount_b > 3){
+  analogWrite(PWMA,750);
+  digitalWrite(dirA,HIGH);
+  }
+  
+}
+void forward(){
+  analogWrite(PWMA,550);
+  digitalWrite(dirA, LOW);
+}
+void backward(){
+  analogWrite(PWMA,550);
+  digitalWrite(dirA,HIGH);
+}
+void wifi_manager(){
+    WiFiClient client = server.available(); // Listen for incoming clients
 
   if (client)
   {                                // If a new client connects,
@@ -150,9 +245,4 @@ void setup() {
 
     //runMagnetLoop();
   }
-
-}
-
-void loop() {
-//analogWrite(PWMA,255);
 }
